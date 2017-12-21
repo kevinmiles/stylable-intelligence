@@ -25,6 +25,7 @@ import * as path from 'path';
 import Provider, { extractTsSignature, extractJsModifierRetrunType } from './provider';
 import { TypeReferenceNode, Identifier } from 'typescript';
 import { MinimalDocs } from './provider-factory';
+import {nativePathToFileUri} from './utils/uri-utils';
 const pvp = require('postcss-value-parser');
 
 
@@ -406,7 +407,7 @@ export class CodeMixinCompletionProvider implements CompletionProvider {
                         return false;
                     }
                     if ((options.meta.mappedSymbols[ms] as ImportSymbol).import.fromRelative.endsWith('.js')) {
-                        if (extractJsModifierRetrunType(ms, 0, options.docs.get('file://' + (options.meta.mappedSymbols[ms] as ImportSymbol).import.from).getText()) === 'stCssFrag') {
+                        if (extractJsModifierRetrunType(ms, 0, options.docs.get(nativePathToFileUri((options.meta.mappedSymbols[ms] as ImportSymbol).import.from)).getText()) === 'stCssFrag') {
                             return true;
                         }
                     }
@@ -472,7 +473,7 @@ export class FormatterCompletionProvider implements CompletionProvider {
                         return true;
                     }
                     if ((options.meta.mappedSymbols[ms] as ImportSymbol).import.fromRelative.endsWith('.js')) {
-                        if (extractJsModifierRetrunType(ms, 0, options.docs.get('file://' + (options.meta.mappedSymbols[ms] as ImportSymbol).import.from).getText()) !== 'stCssFrag') {
+                        if (extractJsModifierRetrunType(ms, 0, options.docs.get(nativePathToFileUri((options.meta.mappedSymbols[ms] as ImportSymbol).import.from)).getText()) !== 'stCssFrag') {
                             return true;
                         }
                     }

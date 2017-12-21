@@ -9,6 +9,7 @@ import {createDiagnosis} from './diagnosis';
 import * as VCL from 'vscode-css-languageservice';
 import {ServerCapabilities as CPServerCapabilities, DocumentColorRequest, ColorPresentationRequest} from 'vscode-languageserver-protocol/lib/protocol.colorProvider.proposed';
 import {valueMapping} from 'stylable/dist/src/stylable-value-parsers';
+import {fileUriToNativePath, nativePathToFileUri} from './utils/uri-utils';
 
 
 namespace OpenDocNotification {
@@ -47,10 +48,6 @@ connection.onInitialize((params): InitializeResult => {
 
 connection.listen();
 
-const isWindows = process.platform === 'win32';
-const fileUriToNativePath = (uri: string) => isWindows ? uri.slice(8).replace('%3A', ':') : uri.slice(7);
-const nativePathToFileUri = (path: string): string => 'file://' + (isWindows ? `/${path.replace(/\\/g, '/').replace(':', '%3A')}` : path)
-
 function getRequestedFiles(doc: string, origin: string): string[] {
     const originNativePath = fileUriToNativePath(origin)
     const originDir = path.dirname(originNativePath);
@@ -64,6 +61,7 @@ function getRequestedFiles(doc: string, origin: string): string[] {
 }
 
 connection.onCompletion((params): Thenable<CompletionItem[]> => {
+    // debugger;
     if (!params.textDocument.uri.endsWith('.st.css') && !params.textDocument.uri.startsWith('untitled:')) {return Promise.resolve([])}
     let cssCompsRaw = cssService.doComplete(documents.get(params.textDocument.uri), params.position, cssService.parseStylesheet(documents.get(params.textDocument.uri)))
 

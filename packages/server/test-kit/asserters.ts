@@ -11,6 +11,7 @@ import { pathFromPosition } from '../src/utils/postcss-ast-utils'
 import { NodeBase } from 'postcss';
 import { Provider } from '../src/index';
 import { SignatureHelp, TextDocumentPositionParams, TextDocumentIdentifier } from 'vscode-languageserver';
+import {fileUriToNativePath} from '../src/utils/uri-utils';
 
 
 function assertPresent(actualCompletions: Completion[], expectedCompletions: Partial<Completion>[], prefix: string = '') {
@@ -131,11 +132,8 @@ const minDocs: MinimalDocs = {
     get(uri: string): TextDocument {
         if (!uri.startsWith('file://')) {
             return TextDocument.create(uri, 'css', 1, fs.readFileSync(uri).toString());
-        } else if (process.platform === 'win32') {
-            return TextDocument.create(uri, 'css', 1, fs.readFileSync(uri.slice(8)).toString());
-        }
-        else {
-            return TextDocument.create(uri, 'css', 1, fs.readFileSync(uri.slice(7)).toString());
+        } else {
+            return TextDocument.create(uri, 'css', 1, fs.readFileSync(fileUriToNativePath(uri)).toString());
         }
     },
     keys(): string[] {
