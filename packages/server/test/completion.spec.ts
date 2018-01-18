@@ -1,6 +1,14 @@
 import * as asserters from '../test-kit/asserters';
 import { createRange } from '../src/completion-providers';
 
+
+const comp_to_import = `.root {
+    -st-states: shmover;
+}
+`
+const comp_to_import_path = 'comp-to-import.st.css';
+
+
 describe('completion unit test', function () {
     describe('root level', function () {
         it('should complete ONLY import and vars directive, root and existing classes at top level', function () {
@@ -101,13 +109,26 @@ describe('completion unit test', function () {
 
     describe('multiple files', function () {
 
-        it('complete states for localy imported component', function () {
-            return asserters.getCompletions('states/locally-imported-component.st.css')
-                .then((asserter) => {
-                    asserter.suggested([
-                        asserters.stateCompletion('shmover', createRange(10, 5, 10, 6), './comp-to-import.st.css')
-                    ]);
-                });
+        it.only('complete states for localy imported component', async function () {
+            const asserter = await asserters.getCompletionsMemFs('locally-imported-component.st.css', {
+                'locally-imported-component.st.css':`:import{
+                    -st-from: "./comp-to-import.st.css";
+                    -st-default: Comp;
+                
+                }
+                
+                .gaga{
+                    -st-extends: Comp;
+                }
+                
+                .gaga:|
+                `,
+                [comp_to_import_path]:comp_to_import
+            });
+            asserter.suggested([
+                asserters.stateCompletion('shmover', createRange(10, 5, 10, 6), './comp-to-import.st.css')
+            ]);
+           
         });
 
         it('complete states for localy imported component (including local states)', function () {

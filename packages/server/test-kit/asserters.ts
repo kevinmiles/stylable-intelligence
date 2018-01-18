@@ -17,6 +17,7 @@ import { LocalSyncFs } from '../src/local-sync-fs';
 import { createDocFs } from '../src/server';
 import { createLanguageServiceHost, createBaseHost } from '../src/utils/temp-language-service-host';
 import { ExtendedTsLanguageService } from '../src/types';
+import { DirectoryContent, MemoryFileSystem } from 'kissfs';
 
 function assertPresent(actualCompletions: Completion[], expectedCompletions: Partial<Completion>[], prefix: string = '') {
     expectedCompletions.forEach(expected => {
@@ -68,6 +69,28 @@ export interface Assertable {
     notSuggested: (nonCompletions: Partial<Completion>[]) => void
 }
 
+export function getCompletionsMemFs(fileName: string, files:DirectoryContent,  prefix: string = ''): Thenable<Assertable>{
+    MemoryFileSystem.addContent(memFs,files);
+
+    const fullPath = path.join(__dirname, '/../test/cases/', fileName);
+    const src: string = memFs.loadTextFileSync(fullPath).toString();
+    return completionsIntenal2(provider2, fullPath, src, prefix)
+        .then((completions) => {
+            return {
+                suggested: (expectedCompletions: Partial<Completion>[]) => {
+                    assertPresent(completions, expectedCompletions, prefix);
+                },
+                exactSuggested: (expectedCompletions: Partial<Completion>[]) => {
+                    assertExact(completions, expectedCompletions);
+                },
+                notSuggested: (expectedNoCompletions: Partial<Completion>[]) => {
+                    assertNotPresent(completions, expectedNoCompletions);
+                }
+            }
+        })
+}
+
+
 export function getCompletions(fileName: string, prefix: string = ''): Thenable<Assertable> {
     const fullPath = path.join(__dirname, '/../test/cases/', fileName);
     const src: string = fs.readFileSync(fullPath).toString();
@@ -94,6 +117,14 @@ function completionsIntenal(provider: Provider, fileName: string, src: string, p
     pos.character += prefix.length;
 
     return provider.provideCompletionItemsFromSrc(src, pos, fileName, docsFs)
+}
+
+function completionsIntenal2(provider: Provider, fileName: string, src: string, prefix: string): Thenable<Completion[]> {
+    let pos = getCaretPosition(src);
+    src = src.replace('|', prefix);
+    pos.character += prefix.length;
+
+    return provider.provideCompletionItemsFromSrc(src, pos, fileName, docsFs2)
 }
 
 export function getCaretPosition(src: string) {
@@ -166,6 +197,48 @@ const wrappedTs:ExtendedTsLanguageService = {
 
 const provider = createProvider(new Stylable('/', createFs( docsFs, true), () => ({ default: {} })), wrappedTs);
 
+
+
+
+
+const memFs:MemoryFileSystem = new MemoryFileSystem();
+
+
+
+const minDocs2: MinimalDocs = {
+    get(uri: string): TextDocument {
+        if (!uri.startsWith('file://')) {
+            return TextDocument.create(uri, 'css', 1, memFs.loadTextFileSync(uri).toString());
+        } else {
+            return TextDocument.create(uri, 'css', 1, memFs.loadTextFileSync(fileUriToNativePath(uri)).toString());
+        }
+    },
+    keys(): string[] {
+        return fs.readdirSync(path.join(__dirname, '../test/cases/imports/'));
+    }
+};
+const docsFs2 = createDocFs(memFs,minDocs2);
+
+let openedFiles2:string[] = [];
+const tsLanguageServiceHost2 = createLanguageServiceHost({
+    cwd: __dirname,
+    getOpenedDocs: () => openedFiles2,
+    compilerOptions: {
+        target: ts.ScriptTarget.ES5, sourceMap: false, declaration: true, outDir: 'dist',
+        module: ts.ModuleKind.CommonJS,
+        typeRoots: ["./node_modules/@types"]
+    },
+    defaultLibDirectory: path.join(__dirname, '../test/cases'),
+    baseHost: createBaseHost(docsFs2, path)
+});
+const tsLanguageService2 = ts.createLanguageService(tsLanguageServiceHost2);
+const wrappedTs2:ExtendedTsLanguageService = {
+    ts:tsLanguageService2,
+    setOpenedFiles:(files:string[]) => openedFiles2 = files
+};
+
+
+const provider2 = createProvider(new Stylable('/', createFs( docsFs2, true), () => ({ default: {} })), wrappedTs2);
 
 
 //syntactic
